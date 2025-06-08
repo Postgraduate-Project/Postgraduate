@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block head %}
+  <!-- DataTables + Buttons CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.bootstrap5.min.css">
+
+  <style>
+    /* Section Header Styling */
+    .section-header {
+      background-color: #a6192e;
+      color: white;
+      padding: 16px 25px;
+      font-size: 2rem;
+      font-weight: 700;
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+    }
+
+    /* Highlighting failing rows */
+    .fail-row {
+      background-color: #f8d7da !important;
+      color: #842029 !important;
+      font-weight: bold;
+    }
+
+    /* Ensuring anchor buttons like back button get proper styling */
+    a.btn.btn-rmit-blue {
+      background-color: #161E87;
+      color: white !important;
+      font-weight: 600;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    a.btn.btn-rmit-blue:hover {
+      background-color: #0f1560;
+      color: white !important;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow border-0 rounded-4 mt-5">
+  <div class="section-header">GPA Predictor</div>
+
+  <div class="card-body">
+    <p class="mb-4 text-muted">
+      This tool helps estimate a student's GPA based on their subject marks.
+    </p>
+
+    <!-- Uploading Form -->
+    <form method="post" enctype="multipart/form-data" class="mb-4">
+      <div class="row g-3">
+        <div class="col-md-10">
+          <label for="datafile" class="form-label fw-semibold">Upload Student Record (CSV / XLS / XLSX)</label>
+          <input class="form-control" type="file" name="datafile" id="datafile" accept=".csv,.xls,.xlsx" required>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-rmit-blue w-100">Predict GPA</button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Flashing Error Messages -->
+    {% for msg in get_flashed_messages() %}
+      <div class="alert alert-warning">{{ msg }}</div>
+    {% endfor %}
+
+    {% if results is not none %}
+      <!-- GPA Category Bar Chart -->
+      {% if chart_base64 %}
+        <div class="text-center mb-4">
+          <img src="data:image/png;base64,{{ chart_base64 }}" alt="GPA Distribution Chart" style="max-width: 500px; width: 100%;">
+        </div>
+      {% endif %}
+
+      <!-- Download Button -->
+      <div class="d-flex justify-content-end mb-3">
+        <form id="download-form" method="post" action="/ml/download-failures">
+          <input type="hidden" name="failing_data" id="failing-data-input">
+          <button type="submit" class="btn btn-rmit-blue">
+            Download List of Failing Students
+          </button>
+        </form>
+      </div>
+
+      <!-- GPA Result Table -->
+      <div class="table-responsive">
+        <table class="table table-bordered data-table" id="ml-table">
+          <thead>
+            <tr>
+              <th>Emplid</th>
+              <th>Name</th>
+              <th>Estimated GPA Range</th>
+              <th>Predicted GPA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for _, row in results.iterrows() %}
+              <tr class="{% if row['Predicted GPA'] < 2.0 %}fail-row{% endif %}">
+                <td>{{ row['Emplid'] }}</td>
+                <td>{{ row['Name'] }}</td>
+                <td>{{ row['Estimated GPA Range'] }}</td>
+                <td>
+                  {{ "%.3f"|format(row['Predicted GPA']) }}
+                  {% if row['Predicted GPA'] < 2.0 %}
+                    <span class="text-danger fw-bold" title="GPA below 2.0">⚠</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Failing Students Serialization -->
+      <script>
+        document.addEventListener("DOMContentLoaded", function () {
+          const results = {{ results.to_json(orient='records') | safe }};
+          const failing = results.filter(r => r["Predicted GPA"] < 2.0);
+          document.getElementById("failing-data-input").value = JSON.stringify(failing);
+        });
+      </script>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <script>
+    $(document).ready(function () {
+      $('#ml-table').DataTable({
+        scrollX: true,
+        paging: true,
+        dom: 'Bfrtip',
+        buttons: [
+          {
+            extend: 'csvHtml5',
+            text: 'Export CSV',
+            className: 'btn btn-rmit-blue me-2'
+          },
+          {
+            extend: 'excelHtml5',
+            text: 'Export Excel',
+            className: 'btn btn-rmit-blue'
+          }
+        ]
+      });
+    });
+  </script>
+{% endblock %}
