@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block head %}
+  <!-- DataTables + Buttons CSS -->
+  <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.bootstrap5.min.css" rel="stylesheet">
+  <style>
+    /* Red header bar with white text */
+    .section-header {
+      background-color: #a6192e;
+      color: white;
+      padding: 16px 25px;
+      font-size: 2rem;
+      font-weight: 700;
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+    }
+
+    /* Customising RMIT blue button styling */
+    .btn-rmit-blue {
+      background-color: #161E87;
+      color: white;
+      font-weight: 500;
+    }
+
+    .btn-rmit-blue:hover {
+      background-color: #0e1460;
+      color: white;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="card shadow border-0 rounded-4">
+    <div class="section-header">
+      Continuing Students
+    </div>
+    <div class="card-body">
+      <!-- Uploading Form for 2 files -->
+      <form method="POST" enctype="multipart/form-data" class="row g-3">
+        <div class="col-md-6">
+          <label for="file1" class="form-label fw-semibold">File 1 (Current Students)</label>
+          <input type="file" class="form-control" name="file1" id="file1" required>
+        </div>
+        <div class="col-md-6">
+          <label for="file2" class="form-label fw-semibold">File 2 (Future Students)</label>
+          <input type="file" class="form-control" name="file2" id="file2" required>
+        </div>
+        <div class="col-12 text-end">
+          <button type="submit" class="btn btn-rmit-blue px-4 mt-3">Merge</button>
+        </div>
+      </form>
+
+      {% if table_html %}
+      <hr class="my-4">
+      <h5 class="fw-bold text-rmit-red mb-4">Matched Results:</h5>
+
+      <!-- Donut Chart -->
+      {% if chart_base64 %}
+        <div class="text-center mb-4">
+          <img src="data:image/png;base64,{{ chart_base64 }}" alt="Continuing Chart" style="max-width: 600px; width: 100%;">
+        </div>
+      {% endif %}
+
+      <!-- Rendered Merged Table -->
+      <div class="table-responsive">
+        {{ table_html | safe }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- DataTables Core + Bootstrap Integration -->
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+  <!-- Buttons Extension -->
+  <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+
+  <!-- Initializing DataTable with RMIT blue export buttons -->
+  <script>
+    $(document).ready(function () {
+      const table = $('#continuing-table').DataTable({
+        scrollX: true,
+        paging: true,
+        dom: "<'row mb-3'<'col-md-6'l><'col-md-6'f>>" + 
+             "Brt" +
+             "<'row mt-3'<'col-md-6'i><'col-md-6'p>>",
+        buttons: [
+          {
+            extend: 'csvHtml5',
+            text: 'Download CSV',
+            className: 'btn btn-rmit-blue me-2'  // RMIT blue class
+          },
+          {
+            extend: 'excelHtml5',
+            text: 'Download Excel',
+            className: 'btn btn-rmit-blue'  // RMIT blue class
+          }
+        ]
+      });
+
+      // Positioning buttons above table
+      table.buttons().container().prependTo('.dataTables_wrapper');
+    });
+  </script>
+{% endblock %}
